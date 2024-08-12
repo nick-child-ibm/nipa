@@ -1,0 +1,3 @@
+[submodule "docker/docker/fancy-results"]
+	path = docker/docker/fancy-results
+	url = git@github.com:nick-child-ibm/nipa-results.git
