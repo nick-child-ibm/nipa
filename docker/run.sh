@@ -17,11 +17,12 @@ if ! cp -a --reflink=always $NIPA_TREE ./nipa-run/tree 2>/dev/null; then
     rm -rf ./nipa-run/tree
     git clone -b nipa-local $NIPA_TREE ./nipa-run/tree
 fi
+
 # nipa doesn't work if HEAD is pointing to nipa-local, so generate a
 # guaranteed random branch name as HEAD.  This always happens on
 # non-reflink filesystems, but can even happen on reflink if the
 # developer left his tree standing on nipa-local.
-( cd ./nipa-run/tree ; git checkout -b nipa-local-tmp-$(cat /proc/sys/kernel/random/uuid | md5sum | head -c 10) )
+( cd ./nipa-run/tree ; git checkout -b nipa-local; git checkout -b nipa-local-tmp-$(cat /proc/sys/kernel/random/uuid | md5sum | head -c 10) )
 
 # This username hacking is necessary, because the patch receiving side
 # in nipa adds an extra signed-off even if it was already there,
@@ -36,16 +37,18 @@ echo >&2 Running nipa in Docker...
 # We try to have everything read-only that is not necessary to write,
 # to make sure that we can monitor cases when some nipa tests write
 # outside of the run directory or of /tmp.
-docker run $DOCKER_FLAGS --rm --user=nipa \
+docker run $DOCKER_FLAGS -it --rm --user=root \
        --read-only \
        -v $PWD/nipa-run/tmp:/tmp \
        -v $PWD/..:/nipa:ro \
        -v $PWD/nipa-run/patatt:/home/nipa/.local/share/patatt \
        -v $PWD/nipa-run/patatt:/root/.local/share/patatt \
        -v $PWD/nipa.config:/nipa.config:ro \
-       -v $PWD/nipa-run:/nipa-run \
-       -v $NIPA_PATCHES:/nipa-patches:ro \
+       -v $PWD/git.config:/home/nipa/.gitconfig:ro \
+       -v $PWD/nipa-run:/nipa-run:Z \
+       -v $NIPA_PATCHES:/nipa-patches:O \
        -v $PWD/ccache:/home/nipa/.ccache \
        -v $PWD/ccache:/root/.ccache \
        --name nipa-local nipa-local \
        /nipa/ingest_mdir.py --mdir /nipa-patches --tree /nipa-run/tree --tree-name $NIPA_TREE_NAME --tree-branch nipa-local
+       #bash
